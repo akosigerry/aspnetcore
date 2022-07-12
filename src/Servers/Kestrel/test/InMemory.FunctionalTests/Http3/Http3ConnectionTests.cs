@@ -58,11 +58,11 @@ public class Http3ConnectionTests : Http3TestBase
 
         var headers = new[]
         {
-                new KeyValuePair<string, string>(PseudoHeaderNames.Method, "Custom"),
-                new KeyValuePair<string, string>(PseudoHeaderNames.Path, "/"),
-                new KeyValuePair<string, string>(PseudoHeaderNames.Scheme, "http"),
-                new KeyValuePair<string, string>(PseudoHeaderNames.Authority, "localhost:80"),
-            };
+            new KeyValuePair<string, string>(PseudoHeaderNames.Method, "Custom"),
+            new KeyValuePair<string, string>(PseudoHeaderNames.Path, "/"),
+            new KeyValuePair<string, string>(PseudoHeaderNames.Scheme, "http"),
+            new KeyValuePair<string, string>(PseudoHeaderNames.Authority, "localhost:80"),
+        };
 
         await requestStream.SendHeadersAsync(headers);
         await requestStream.SendDataAsync(Encoding.ASCII.GetBytes("Hello world"), endStream: true);

@@ -9,50 +9,50 @@ public class HttpProtocolFeatureCollection
     {
         var alwaysFeatures = new[]
         {
-                "IHttpRequestFeature",
-                "IHttpResponseFeature",
-                "IHttpResponseBodyFeature",
-                "IRouteValuesFeature",
-                "IEndpointFeature",
-                "IServiceProvidersFeature",
-                "IHttpActivityFeature"
-            };
+            "IHttpRequestFeature",
+            "IHttpResponseFeature",
+            "IHttpResponseBodyFeature",
+            "IRouteValuesFeature",
+            "IEndpointFeature",
+            "IServiceProvidersFeature",
+            "IHttpActivityFeature"
+        };
 
         var commonFeatures = new[]
         {
-                "IItemsFeature",
-                "IQueryFeature",
-                "IRequestBodyPipeFeature",
-                "IFormFeature",
-                "IHttpAuthenticationFeature",
-                "IHttpRequestIdentifierFeature",
-            };
+            "IItemsFeature",
+            "IQueryFeature",
+            "IRequestBodyPipeFeature",
+            "IFormFeature",
+            "IHttpAuthenticationFeature",
+            "IHttpRequestIdentifierFeature",
+        };
 
         var sometimesFeatures = new[]
         {
-                "IHttpConnectionFeature",
-                "ISessionFeature",
-                "IResponseCookiesFeature",
-                "IHttpRequestTrailersFeature",
-                "IHttpResponseTrailersFeature",
-                "ITlsConnectionFeature",
-                "IHttpExtendedConnectFeature",
-                "IHttpUpgradeFeature",
-                "IHttpWebSocketFeature",
-                "IBadRequestExceptionFeature"
-            };
+            "IHttpConnectionFeature",
+            "ISessionFeature",
+            "IResponseCookiesFeature",
+            "IHttpRequestTrailersFeature",
+            "IHttpResponseTrailersFeature",
+            "ITlsConnectionFeature",
+            "IHttpExtendedConnectFeature",
+            "IHttpUpgradeFeature",
+            "IHttpWebSocketFeature",
+            "IBadRequestExceptionFeature"
+        };
         var maybeFeatures = new[]
         {
-                "IHttp2StreamIdFeature",
-                "IHttpRequestLifetimeFeature",
-                "IHttpMaxRequestBodySizeFeature",
-                "IHttpMinRequestBodyDataRateFeature",
-                "IHttpMinResponseDataRateFeature",
-                "IHttpBodyControlFeature",
-                "IHttpRequestBodyDetectionFeature",
-                "IHttpResetFeature",
-                "IPersistentStateFeature"
-            };
+            "IHttp2StreamIdFeature",
+            "IHttpRequestLifetimeFeature",
+            "IHttpMaxRequestBodySizeFeature",
+            "IHttpMinRequestBodyDataRateFeature",
+            "IHttpMinResponseDataRateFeature",
+            "IHttpBodyControlFeature",
+            "IHttpRequestBodyDetectionFeature",
+            "IHttpResetFeature",
+            "IPersistentStateFeature"
+        };
 
         var allFeatures = alwaysFeatures
             .Concat(commonFeatures)
@@ -64,23 +64,23 @@ public class HttpProtocolFeatureCollection
         // See also: src/Kestrel.Core/Internal/Http/HttpProtocol.FeatureCollection.cs
         var implementedFeatures = new[]
         {
-                "IHttpRequestFeature",
-                "IHttpResponseFeature",
-                "IHttpResponseBodyFeature",
-                "IRouteValuesFeature",
-                "IEndpointFeature",
-                "IHttpRequestIdentifierFeature",
-                "IHttpRequestTrailersFeature",
-                "IHttpExtendedConnectFeature",
-                "IHttpUpgradeFeature",
-                "IRequestBodyPipeFeature",
-                "IHttpConnectionFeature",
-                "IHttpRequestLifetimeFeature",
-                "IHttpBodyControlFeature",
-                "IHttpMaxRequestBodySizeFeature",
-                "IHttpRequestBodyDetectionFeature",
-                "IBadRequestExceptionFeature"
-            };
+            "IHttpRequestFeature",
+            "IHttpResponseFeature",
+            "IHttpResponseBodyFeature",
+            "IRouteValuesFeature",
+            "IEndpointFeature",
+            "IHttpRequestIdentifierFeature",
+            "IHttpRequestTrailersFeature",
+            "IHttpExtendedConnectFeature",
+            "IHttpUpgradeFeature",
+            "IRequestBodyPipeFeature",
+            "IHttpConnectionFeature",
+            "IHttpRequestLifetimeFeature",
+            "IHttpBodyControlFeature",
+            "IHttpMaxRequestBodySizeFeature",
+            "IHttpRequestBodyDetectionFeature",
+            "IBadRequestExceptionFeature"
+        };
 
         var usings = $@"
 using Microsoft.AspNetCore.Connections.Features;

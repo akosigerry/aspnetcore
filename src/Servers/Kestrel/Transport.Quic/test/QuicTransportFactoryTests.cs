@@ -20,7 +20,7 @@ public class QuicTransportFactoryTests : TestApplicationErrorLoggerLoggedTest
 {
     [ConditionalFact]
     [MsQuicSupported]
-    public async Task BindAsync_NoFeature_Error()
+    public async Task BindAsync_NoFeatures_Error()
     {
         // Arrange
         var quicTransportOptions = new QuicTransportOptions();
@@ -35,7 +35,7 @@ public class QuicTransportFactoryTests : TestApplicationErrorLoggerLoggedTest
 
     [ConditionalFact]
     [MsQuicSupported]
-    public async Task BindAsync_NoServerCertificate_Error()
+    public async Task BindAsync_NoApplicationProtocols_Error()
     {
         // Arrange
         var quicTransportOptions = new QuicTransportOptions();
@@ -47,6 +47,26 @@ public class QuicTransportFactoryTests : TestApplicationErrorLoggerLoggedTest
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => quicTransportFactory.BindAsync(new IPEndPoint(0, 0), features: features, cancellationToken: CancellationToken.None).AsTask()).DefaultTimeout();
 
         // Assert
-        Assert.Equal("SslServerAuthenticationOptions must provide a server certificate using ServerCertificate, ServerCertificateContext, or ServerCertificateSelectionCallback.", ex.Message);
+        Assert.Equal("No application protocols specified for QUIC transport.", ex.Message);
+    }
+
+    [ConditionalFact]
+    [MsQuicSupported]
+    public async Task BindAsync_SslServerAuthenticationOptions_Success()
+    {
+        // Arrange
+        var quicTransportOptions = new QuicTransportOptions();
+        var quicTransportFactory = new QuicTransportFactory(NullLoggerFactory.Instance, Options.Create(quicTransportOptions));
+        var features = new FeatureCollection();
+        features.Set(new SslServerAuthenticationOptions
+        {
+            ApplicationProtocols = new List<SslApplicationProtocol>
+            {
+                SslApplicationProtocol.Http3
+            }
+        });
+
+        // Act & Assert
+        await quicTransportFactory.BindAsync(new IPEndPoint(0, 0), features: features, cancellationToken: CancellationToken.None).AsTask().DefaultTimeout();
     }
 }

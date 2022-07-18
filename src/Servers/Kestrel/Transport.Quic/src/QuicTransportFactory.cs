@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Linq;
 using System.Net;
 using System.Net.Security;
 using Microsoft.AspNetCore.Connections;
@@ -50,22 +51,33 @@ internal sealed class QuicTransportFactory : IMultiplexedConnectionListenerFacto
             throw new ArgumentNullException(nameof(endpoint));
         }
 
-        var sslServerAuthenticationOptions = features?.Get<SslServerAuthenticationOptions>();
+        var sslServerAuthenticationOptionsCallback = features?.Get<Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>>>();
+        var applicationProtocols = features?.Get<IList<SslApplicationProtocol>>();
 
-        if (sslServerAuthenticationOptions == null)
+        // As a fallback, check if SslServerAuthenticationOptions is specified and use it instead.
+        if (sslServerAuthenticationOptionsCallback == null)
+        {
+            var sslServerAuthenticationOptions = features?.Get<SslServerAuthenticationOptions>();
+            if (sslServerAuthenticationOptions != null)
+            {
+                sslServerAuthenticationOptionsCallback = (helloInfo, cancellationToken) =>
+                {
+                    return ValueTask.FromResult(sslServerAuthenticationOptions);
+                };
+                applicationProtocols = sslServerAuthenticationOptions.ApplicationProtocols;
+            }
+        }
+
+        if (sslServerAuthenticationOptionsCallback == null)
         {
             throw new InvalidOperationException("Couldn't find HTTPS configuration for QUIC transport.");
         }
-        if (sslServerAuthenticationOptions.ServerCertificate == null
-            && sslServerAuthenticationOptions.ServerCertificateContext == null
-            && sslServerAuthenticationOptions.ServerCertificateSelectionCallback == null)
+        if (applicationProtocols == null || applicationProtocols.Count == 0)
         {
-            var message = $"{nameof(SslServerAuthenticationOptions)} must provide a server certificate using {nameof(SslServerAuthenticationOptions.ServerCertificate)},"
-                + $" {nameof(SslServerAuthenticationOptions.ServerCertificateContext)}, or {nameof(SslServerAuthenticationOptions.ServerCertificateSelectionCallback)}.";
-            throw new InvalidOperationException(message);
+            throw new InvalidOperationException("No application protocols specified for QUIC transport.");
         }
 
-        var transport = new QuicConnectionListener(_options, _log, endpoint, sslServerAuthenticationOptions);
+        var transport = new QuicConnectionListener(_options, _log, endpoint, applicationProtocols.ToList(), sslServerAuthenticationOptionsCallback);
         await transport.CreateListenerAsync();
 
         return transport;

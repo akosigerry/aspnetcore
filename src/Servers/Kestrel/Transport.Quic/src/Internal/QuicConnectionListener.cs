@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
@@ -16,12 +18,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Quic.Internal;
 internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, IAsyncDisposable
 {
     private readonly ILogger _log;
+    private readonly List<SslApplicationProtocol> _protocols;
     private bool _disposed;
     private readonly QuicTransportContext _context;
     private QuicListener? _listener;
     private readonly QuicListenerOptions _quicListenerOptions;
 
-    public QuicConnectionListener(QuicTransportOptions options, ILogger log, EndPoint endpoint, SslServerAuthenticationOptions sslServerAuthenticationOptions)
+    public QuicConnectionListener(
+        QuicTransportOptions options,
+        ILogger log,
+        EndPoint endpoint,
+        List<SslApplicationProtocol> protocols,
+        Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>> sslServerAuthenticationOptionsCallback)
     {
         if (!QuicListener.IsSupported)
         {
@@ -33,36 +41,77 @@ internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, I
             throw new InvalidOperationException($"QUIC doesn't support listening on the configured endpoint type. Expected {nameof(IPEndPoint)} but got {endpoint.GetType().Name}.");
         }
 
-        if (sslServerAuthenticationOptions.ApplicationProtocols is null || sslServerAuthenticationOptions.ApplicationProtocols.Count == 0)
+        if (protocols.Count == 0)
         {
             throw new InvalidOperationException("No application protocols specified.");
         }
 
         _log = log;
+        _protocols = protocols;
         _context = new QuicTransportContext(_log, options);
         _quicListenerOptions = new QuicListenerOptions
         {
-            ApplicationProtocols = sslServerAuthenticationOptions.ApplicationProtocols,
+            ApplicationProtocols = _protocols,
             ListenEndPoint = listenEndPoint,
             ListenBacklog = options.Backlog,
-            ConnectionOptionsCallback = (connection, helloInfo, cancellationToken) =>
+            ConnectionOptionsCallback = async (connection, helloInfo, cancellationToken) =>
             {
+                var serverAuthenticationOptions = await sslServerAuthenticationOptionsCallback(helloInfo, cancellationToken);
+                ValidateServerAuthenticationOptions(serverAuthenticationOptions);
+
                 var connectionOptions = new QuicServerConnectionOptions
                 {
-                    ServerAuthenticationOptions = sslServerAuthenticationOptions,
+                    ServerAuthenticationOptions = serverAuthenticationOptions,
                     IdleTimeout = options.IdleTimeout,
                     MaxInboundBidirectionalStreams = options.MaxBidirectionalStreamCount,
                     MaxInboundUnidirectionalStreams = options.MaxUnidirectionalStreamCount,
                     DefaultCloseErrorCode = 0,
                     DefaultStreamErrorCode = 0,
                 };
-                return ValueTask.FromResult(connectionOptions);
+                return connectionOptions;
             }
         };
 
         // Setting to listenEndPoint to prevent the property from being null.
         // This will be initialized when CreateListenerAsync() is invoked.
         EndPoint = listenEndPoint;
+    }
+
+    private void ValidateServerAuthenticationOptions(SslServerAuthenticationOptions serverAuthenticationOptions)
+    {
+        if (serverAuthenticationOptions.ServerCertificate == null &&
+            serverAuthenticationOptions.ServerCertificateContext == null &&
+            serverAuthenticationOptions.ServerCertificateSelectionCallback == null)
+        {
+            QuicLog.ConnectionListenerCertificateNotSpecified(_log);
+        }
+        if (serverAuthenticationOptions.ApplicationProtocols == null || serverAuthenticationOptions.ApplicationProtocols.Count == 0)
+        {
+            QuicLog.ConnectionListenerApplicationProtocolsNotSpecified(_log);
+        }
+        else if (HasUnknownApplicationProtocols(_protocols, serverAuthenticationOptions.ApplicationProtocols, out var unknownApplicationProtocols))
+        {
+            QuicLog.ConnectionListenerUnknownApplicationProtocols(_log, unknownApplicationProtocols);
+        }
+    }
+
+    private static bool HasUnknownApplicationProtocols(
+        List<SslApplicationProtocol> protocols,
+        List<SslApplicationProtocol> callbackProtocols,
+        [NotNullWhen(true)] out List<SslApplicationProtocol>? unknownCallbackProtocols)
+    {
+        unknownCallbackProtocols = null;
+
+        foreach (var callbackProtocol in callbackProtocols)
+        {
+            if (!protocols.Contains(callbackProtocol))
+            {
+                unknownCallbackProtocols ??= new List<SslApplicationProtocol>();
+                unknownCallbackProtocols.Add(callbackProtocol);
+            }
+        }
+
+        return unknownCallbackProtocols != null;
     }
 
     public EndPoint EndPoint { get; set; }

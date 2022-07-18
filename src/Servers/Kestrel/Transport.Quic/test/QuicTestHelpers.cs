@@ -52,6 +52,19 @@ internal static class QuicTestHelpers
         return (QuicConnectionListener)await transportFactory.BindAsync(endpoint, features, cancellationToken: CancellationToken.None);
     }
 
+    public static async Task<QuicConnectionListener> CreateConnectionListenerFactory(List<SslApplicationProtocol> applicationProtocols, Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>> sslServerAuthenticationOptionsCallback, ILoggerFactory loggerFactory = null, ISystemClock systemClock = null)
+    {
+        var transportFactory = CreateTransportFactory(loggerFactory, systemClock);
+
+        // Use ephemeral port 0. OS will assign unused port.
+        var endpoint = new IPEndPoint(IPAddress.Loopback, 0);
+
+        var features = new FeatureCollection();
+        features.Set(sslServerAuthenticationOptionsCallback);
+        features.Set<IList<SslApplicationProtocol>>(applicationProtocols);
+        return (QuicConnectionListener)await transportFactory.BindAsync(endpoint, features, cancellationToken: CancellationToken.None);
+    }
+
     public static FeatureCollection CreateBindAsyncFeatures(bool clientCertificateRequired = false)
     {
         var cert = TestResources.GetTestCertificate();

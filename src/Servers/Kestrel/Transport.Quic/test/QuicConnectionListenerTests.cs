@@ -108,4 +108,59 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
         var options = QuicTestHelpers.CreateClientConnectionOptions(connectionListener.EndPoint);
         await using var clientConnection = await QuicConnection.ConnectAsync(options);
     }
+
+    [ConditionalFact]
+    [MsQuicSupported]
+    public async Task AcceptAsync_NoCertificateOrApplicationProtocols_Log()
+    {
+        // Arrange
+        await using var connectionListener = await QuicTestHelpers.CreateConnectionListenerFactory(
+            applicationProtocols: new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+            sslServerAuthenticationOptionsCallback: (helloInfo, cancellationToken) => ValueTask.FromResult(new SslServerAuthenticationOptions()),
+            LoggerFactory);
+
+        // Act
+        var acceptTask = connectionListener.AcceptAndAddFeatureAsync().DefaultTimeout();
+
+        var options = QuicTestHelpers.CreateClientConnectionOptions(connectionListener.EndPoint);
+
+        await Assert.ThrowsAsync<QuicException>(() => QuicConnection.ConnectAsync(options).AsTask());
+
+        // Assert
+        Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerCertificateNotSpecified");
+        Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerApplicationProtocolsNotSpecified");
+    }
+
+    [ConditionalFact]
+    [MsQuicSupported]
+    public async Task AcceptAsync_UnknownApplicationProtocols_Log()
+    {
+        // Arrange
+        await using var connectionListener = await QuicTestHelpers.CreateConnectionListenerFactory(
+            applicationProtocols: new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+            sslServerAuthenticationOptionsCallback: (helloInfo, cancellationToken) =>
+            {
+                var options = new SslServerAuthenticationOptions();
+                options.ServerCertificate = TestResources.GetTestCertificate();
+                options.ApplicationProtocols = new List<SslApplicationProtocol>
+                {
+                    new SslApplicationProtocol("custom")
+                };
+                return ValueTask.FromResult(options);
+            },
+            LoggerFactory);
+
+        // Act
+        var acceptTask = connectionListener.AcceptAndAddFeatureAsync().DefaultTimeout();
+
+        var options = QuicTestHelpers.CreateClientConnectionOptions(connectionListener.EndPoint);
+
+        // TODO: Expected this to error
+        await QuicConnection.ConnectAsync(options);
+
+        // Assert
+        // https://github.com/dotnet/runtime/issues/72361
+        var log = LogMessages.Single(m => m.EventId.Name == "ConnectionListenerUnknownApplicationProtocols");
+        Assert.Equal("Unknown application protocols specified for connection: custom", log.Message);
+    }
 }

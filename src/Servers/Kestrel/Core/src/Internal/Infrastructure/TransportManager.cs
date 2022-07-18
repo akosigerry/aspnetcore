@@ -5,6 +5,7 @@
 
 using System.Linq;
 using System.Net;
+using System.Net.Security;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
@@ -58,6 +59,21 @@ internal sealed class TransportManager
         if (listenOptions.HttpsOptions != null)
         {
             features.Set(HttpsConnectionMiddleware.CreateHttp3Options(listenOptions.HttpsOptions));
+        }
+        if (listenOptions.HttpsCallbackOptions != null)
+        {
+            Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>> callback = (helloInfo, cancellationToken) =>
+            {
+                return listenOptions.HttpsCallbackOptions.OnConnection(new Https.TlsHandshakeCallbackContext
+                {
+                    ClientHelloInfo = helloInfo,
+                    CancellationToken = cancellationToken,
+                    State = listenOptions.HttpsCallbackOptions.OnConnectionState
+                });
+            };
+
+            features.Set(callback);
+            features.Set<IList<SslApplicationProtocol>>(new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 });
         }
 
         var transport = await _multiplexedTransportFactory.BindAsync(endPoint, features, cancellationToken).ConfigureAwait(false);

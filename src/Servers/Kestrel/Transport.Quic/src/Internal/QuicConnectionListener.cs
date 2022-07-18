@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Net;
 using System.Net.Quic;
 using System.Net.Security;
@@ -89,29 +87,6 @@ internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, I
         {
             QuicLog.ConnectionListenerApplicationProtocolsNotSpecified(_log);
         }
-        else if (HasUnknownApplicationProtocols(_protocols, serverAuthenticationOptions.ApplicationProtocols, out var unknownApplicationProtocols))
-        {
-            QuicLog.ConnectionListenerUnknownApplicationProtocols(_log, unknownApplicationProtocols);
-        }
-    }
-
-    private static bool HasUnknownApplicationProtocols(
-        List<SslApplicationProtocol> protocols,
-        List<SslApplicationProtocol> callbackProtocols,
-        [NotNullWhen(true)] out List<SslApplicationProtocol>? unknownCallbackProtocols)
-    {
-        unknownCallbackProtocols = null;
-
-        foreach (var callbackProtocol in callbackProtocols)
-        {
-            if (!protocols.Contains(callbackProtocol))
-            {
-                unknownCallbackProtocols ??= new List<SslApplicationProtocol>();
-                unknownCallbackProtocols.Add(callbackProtocol);
-            }
-        }
-
-        return unknownCallbackProtocols != null;
     }
 
     public EndPoint EndPoint { get; set; }

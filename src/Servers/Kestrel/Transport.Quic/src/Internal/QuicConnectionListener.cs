@@ -55,6 +55,10 @@ internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, I
             ConnectionOptionsCallback = async (connection, helloInfo, cancellationToken) =>
             {
                 var serverAuthenticationOptions = await sslServerAuthenticationOptionsCallback(helloInfo, cancellationToken);
+
+                // If the SslServerAuthenticationOptions doesn't have a cert or protocols then the
+                // QUIC connection will fail and the client receives an unhelpful message.
+                // Validate the options on the server and log issues to improve debugging.
                 ValidateServerAuthenticationOptions(serverAuthenticationOptions);
 
                 var connectionOptions = new QuicServerConnectionOptions

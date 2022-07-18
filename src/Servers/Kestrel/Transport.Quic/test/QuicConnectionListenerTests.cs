@@ -156,10 +156,10 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
         var options = QuicTestHelpers.CreateClientConnectionOptions(connectionListener.EndPoint);
 
         // TODO: Expected this to error
+        // https://github.com/dotnet/runtime/issues/72361
         await QuicConnection.ConnectAsync(options);
 
         // Assert
-        // https://github.com/dotnet/runtime/issues/72361
         var log = LogMessages.Single(m => m.EventId.Name == "ConnectionListenerUnknownApplicationProtocols");
         Assert.Equal("Unknown application protocols specified for connection: custom", log.Message);
     }

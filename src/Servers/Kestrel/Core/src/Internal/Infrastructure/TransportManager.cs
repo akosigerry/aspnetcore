@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Security;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.Server.Kestrel.Https.Internal;
 
 namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure;
@@ -58,22 +59,31 @@ internal sealed class TransportManager
         // The transport will check if the feature is missing.
         if (listenOptions.HttpsOptions != null)
         {
-            features.Set(HttpsConnectionMiddleware.CreateHttp3Options(listenOptions.HttpsOptions));
+            var sslServerAuthenticationOptions = HttpsConnectionMiddleware.CreateHttp3Options(listenOptions.HttpsOptions);
+            features.Set(new TlsConnectionOptions
+            {
+                ApplicationProtocols = sslServerAuthenticationOptions.ApplicationProtocols ?? new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                OnConnection = context => ValueTask.FromResult(sslServerAuthenticationOptions),
+                OnConnectionState = null,
+            });
         }
         if (listenOptions.HttpsCallbackOptions != null)
         {
-            Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>> callback = (helloInfo, cancellationToken) =>
+            features.Set(new TlsConnectionOptions
             {
-                return listenOptions.HttpsCallbackOptions.OnConnection(new Https.TlsHandshakeCallbackContext
+                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                OnConnection = context =>
                 {
-                    ClientHelloInfo = helloInfo,
-                    CancellationToken = cancellationToken,
-                    State = listenOptions.HttpsCallbackOptions.OnConnectionState
-                });
-            };
-
-            features.Set(callback);
-            features.Set<IList<SslApplicationProtocol>>(new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 });
+                    return listenOptions.HttpsCallbackOptions.OnConnection(new TlsHandshakeCallbackContext
+                    {
+                        ClientHelloInfo = context.ClientHelloInfo,
+                        CancellationToken = context.CancellationToken,
+                        State = context.State,
+                        Connection = context.Connection,
+                    });
+                },
+                OnConnectionState = listenOptions.HttpsCallbackOptions.OnConnectionState,
+            });
         }
 
         var transport = await _multiplexedTransportFactory.BindAsync(endPoint, features, cancellationToken).ConfigureAwait(false);

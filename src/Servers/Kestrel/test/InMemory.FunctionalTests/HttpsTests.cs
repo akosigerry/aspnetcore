@@ -439,9 +439,11 @@ public class HttpsTests : LoggedTest
 
         Assert.NotNull(bindFeatures);
 
-        var sslOptions = bindFeatures.Get<SslServerAuthenticationOptions>();
+        var sslOptions = bindFeatures.Get<TlsConnectionOptions>();
         Assert.NotNull(sslOptions);
-        Assert.Equal(_x509Certificate2, sslOptions.ServerCertificate);
+
+        var sslServerAuthenticationOptions = await sslOptions.OnConnection(new TlsConnectionCallbackContext());
+        Assert.Equal(_x509Certificate2, sslServerAuthenticationOptions.ServerCertificate);
     }
 
     [Fact]
@@ -481,9 +483,11 @@ public class HttpsTests : LoggedTest
 
         Assert.NotNull(bindFeatures);
 
-        var sslOptions = bindFeatures.Get<SslServerAuthenticationOptions>();
-        Assert.NotNull(sslOptions);
-        Assert.Equal(_x509Certificate2, sslOptions.ServerCertificate);
+        var tlsOptions = bindFeatures.Get<TlsConnectionOptions>();
+        Assert.NotNull(tlsOptions);
+
+        var sslServerAuthenticationOptions = await tlsOptions.OnConnection(new TlsConnectionCallbackContext());
+        Assert.Equal(_x509Certificate2, sslServerAuthenticationOptions.ServerCertificate);
     }
 
     [Fact]
@@ -569,7 +573,6 @@ public class HttpsTests : LoggedTest
             bindFeatures = features;
         };
 
-        object callbackState = null;
         var testState = new object();
         var testContext = new TestServiceContext(LoggerFactory);
         testContext.ServerOptions = serverOptions;
@@ -582,7 +585,6 @@ public class HttpsTests : LoggedTest
                     listenOptions.Protocols = HttpProtocols.Http3;
                     listenOptions.UseHttps((SslStream stream, SslClientHelloInfo clientHelloInfo, object state, CancellationToken cancellationToken) =>
                     {
-                        callbackState = state;
                         return ValueTask.FromResult((new SslServerAuthenticationOptions()));
                     }, state: testState);
                 });
@@ -596,14 +598,12 @@ public class HttpsTests : LoggedTest
 
         Assert.NotNull(bindFeatures);
 
-        var applicationProtocols = bindFeatures.Get<IList<SslApplicationProtocol>>();
-        Assert.Collection(applicationProtocols, p => Assert.Equal(SslApplicationProtocol.Http3, p));
+        var tlsOptions = bindFeatures.Get<TlsConnectionOptions>();
+        Assert.NotNull(tlsOptions);
 
-        var callback = bindFeatures.Get<Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>>>();
-        Assert.NotNull(callback);
+        Assert.Collection(tlsOptions.ApplicationProtocols, p => Assert.Equal(SslApplicationProtocol.Http3, p));
 
-        _ = await callback(new SslClientHelloInfo(), CancellationToken.None);
-        Assert.Equal(testState, callbackState);
+        Assert.Equal(testState, tlsOptions.OnConnectionState);
     }
 
     [Fact]
@@ -619,7 +619,6 @@ public class HttpsTests : LoggedTest
             bindFeatures = features;
         };
 
-        object callbackState = null;
         var testState = new object();
         var testContext = new TestServiceContext(LoggerFactory);
         testContext.ServerOptions = serverOptions;
@@ -634,7 +633,6 @@ public class HttpsTests : LoggedTest
                     {
                         OnConnection = context =>
                         {
-                            callbackState = context.State;
                             return ValueTask.FromResult(new SslServerAuthenticationOptions());
                         },
                         OnConnectionState = testState
@@ -650,14 +648,11 @@ public class HttpsTests : LoggedTest
 
         Assert.NotNull(bindFeatures);
 
-        var applicationProtocols = bindFeatures.Get<IList<SslApplicationProtocol>>();
-        Assert.Collection(applicationProtocols, p => Assert.Equal(SslApplicationProtocol.Http3, p));
+        var tlsOptions = bindFeatures.Get<TlsConnectionOptions>();
+        Assert.Collection(tlsOptions.ApplicationProtocols, p => Assert.Equal(SslApplicationProtocol.Http3, p));
 
-        var callback = bindFeatures.Get<Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>>>();
-        Assert.NotNull(callback);
-
-        _ = await callback(new SslClientHelloInfo(), CancellationToken.None);
-        Assert.Equal(testState, callbackState);
+        Assert.NotNull(tlsOptions.OnConnection);
+        Assert.Equal(testState, tlsOptions.OnConnectionState);
     }
 
     [Fact]

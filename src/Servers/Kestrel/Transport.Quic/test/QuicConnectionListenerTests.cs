@@ -8,6 +8,7 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Testing;
 using Xunit;
@@ -115,12 +116,15 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
     {
         // Arrange
         await using var connectionListener = await QuicTestHelpers.CreateConnectionListenerFactory(
-            applicationProtocols: new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-            sslServerAuthenticationOptionsCallback: (helloInfo, cancellationToken) =>
+            new TlsConnectionOptions
             {
-                var options = new SslServerAuthenticationOptions();
-                options.ApplicationProtocols = new List<SslApplicationProtocol>();
-                return ValueTask.FromResult(options);
+                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                OnConnection = context =>
+                {
+                    var options = new SslServerAuthenticationOptions();
+                    options.ApplicationProtocols = new List<SslApplicationProtocol>();
+                    return ValueTask.FromResult(options);
+                }
             },
             LoggerFactory);
 
@@ -142,13 +146,15 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
     {
         // Arrange
         await using var connectionListener = await QuicTestHelpers.CreateConnectionListenerFactory(
-            applicationProtocols: new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-            sslServerAuthenticationOptionsCallback: (helloInfo, cancellationToken) =>
+            new TlsConnectionOptions
             {
-                var options = new SslServerAuthenticationOptions();
-                options.ServerCertificate = TestResources.GetTestCertificate();
-
-                return ValueTask.FromResult(options);
+                ApplicationProtocols = new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+                OnConnection = context =>
+                {
+                    var options = new SslServerAuthenticationOptions();
+                    options.ServerCertificate = TestResources.GetTestCertificate();
+                    return ValueTask.FromResult(options);
+                }
             },
             LoggerFactory);
 

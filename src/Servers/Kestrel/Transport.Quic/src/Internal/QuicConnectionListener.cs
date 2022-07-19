@@ -16,18 +16,17 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Transport.Quic.Internal;
 internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, IAsyncDisposable
 {
     private readonly ILogger _log;
-    private readonly List<SslApplicationProtocol> _protocols;
-    private bool _disposed;
+    private readonly TlsConnectionOptions _tlsConnectionOptions;
     private readonly QuicTransportContext _context;
-    private QuicListener? _listener;
     private readonly QuicListenerOptions _quicListenerOptions;
+    private bool _disposed;
+    private QuicListener? _listener;
 
     public QuicConnectionListener(
         QuicTransportOptions options,
         ILogger log,
         EndPoint endpoint,
-        List<SslApplicationProtocol> protocols,
-        Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>> sslServerAuthenticationOptionsCallback)
+        TlsConnectionOptions tlsConnectionOptions)
     {
         if (!QuicListener.IsSupported)
         {
@@ -39,27 +38,33 @@ internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, I
             throw new InvalidOperationException($"QUIC doesn't support listening on the configured endpoint type. Expected {nameof(IPEndPoint)} but got {endpoint.GetType().Name}.");
         }
 
-        if (protocols.Count == 0)
+        if (tlsConnectionOptions.ApplicationProtocols.Count == 0)
         {
             throw new InvalidOperationException("No application protocols specified.");
         }
 
         _log = log;
-        _protocols = protocols;
+        _tlsConnectionOptions = tlsConnectionOptions;
         _context = new QuicTransportContext(_log, options);
         _quicListenerOptions = new QuicListenerOptions
         {
-            ApplicationProtocols = _protocols,
+            ApplicationProtocols = _tlsConnectionOptions.ApplicationProtocols,
             ListenEndPoint = listenEndPoint,
             ListenBacklog = options.Backlog,
             ConnectionOptionsCallback = async (connection, helloInfo, cancellationToken) =>
             {
-                var serverAuthenticationOptions = await sslServerAuthenticationOptionsCallback(helloInfo, cancellationToken);
+                var serverAuthenticationOptions = await _tlsConnectionOptions.OnConnection(new TlsConnectionCallbackContext
+                {
+                    CancellationToken = cancellationToken,
+                    ClientHelloInfo = helloInfo,
+                    State = _tlsConnectionOptions.OnConnectionState,
+                    Connection = null!,
+                });
 
                 // If the callback didn't set protocols then use the listener's list of protocols.
                 if (serverAuthenticationOptions.ApplicationProtocols == null)
                 {
-                    serverAuthenticationOptions.ApplicationProtocols = _protocols;
+                    serverAuthenticationOptions.ApplicationProtocols = _tlsConnectionOptions.ApplicationProtocols;
                 }
 
                 // If the SslServerAuthenticationOptions doesn't have a cert or protocols then the

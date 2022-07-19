@@ -51,33 +51,18 @@ internal sealed class QuicTransportFactory : IMultiplexedConnectionListenerFacto
             throw new ArgumentNullException(nameof(endpoint));
         }
 
-        var sslServerAuthenticationOptionsCallback = features?.Get<Func<SslClientHelloInfo, CancellationToken, ValueTask<SslServerAuthenticationOptions>>>();
-        var applicationProtocols = features?.Get<IList<SslApplicationProtocol>>();
+        var tlsConnectionOptions = features?.Get<TlsConnectionOptions>();
 
-        // As a fallback, check if SslServerAuthenticationOptions is specified and use it instead.
-        if (sslServerAuthenticationOptionsCallback == null)
-        {
-            var sslServerAuthenticationOptions = features?.Get<SslServerAuthenticationOptions>();
-            if (sslServerAuthenticationOptions != null)
-            {
-                sslServerAuthenticationOptionsCallback = (helloInfo, cancellationToken) =>
-                {
-                    return ValueTask.FromResult(sslServerAuthenticationOptions);
-                };
-                applicationProtocols = sslServerAuthenticationOptions.ApplicationProtocols;
-            }
-        }
-
-        if (sslServerAuthenticationOptionsCallback == null)
+        if (tlsConnectionOptions == null)
         {
             throw new InvalidOperationException("Couldn't find HTTPS configuration for QUIC transport.");
         }
-        if (applicationProtocols == null || applicationProtocols.Count == 0)
+        if (tlsConnectionOptions.ApplicationProtocols == null || tlsConnectionOptions.ApplicationProtocols.Count == 0)
         {
             throw new InvalidOperationException("No application protocols specified for QUIC transport.");
         }
 
-        var transport = new QuicConnectionListener(_options, _log, endpoint, applicationProtocols.ToList(), sslServerAuthenticationOptionsCallback);
+        var transport = new QuicConnectionListener(_options, _log, endpoint, tlsConnectionOptions);
         await transport.CreateListenerAsync();
 
         return transport;

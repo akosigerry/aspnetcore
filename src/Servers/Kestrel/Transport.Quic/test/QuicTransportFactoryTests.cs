@@ -7,6 +7,7 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.AspNetCore.Testing;
@@ -41,7 +42,7 @@ public class QuicTransportFactoryTests : TestApplicationErrorLoggerLoggedTest
         var quicTransportOptions = new QuicTransportOptions();
         var quicTransportFactory = new QuicTransportFactory(NullLoggerFactory.Instance, Options.Create(quicTransportOptions));
         var features = new FeatureCollection();
-        features.Set(new SslServerAuthenticationOptions());
+        features.Set(new TlsConnectionOptions());
 
         // Act
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => quicTransportFactory.BindAsync(new IPEndPoint(0, 0), features: features, cancellationToken: CancellationToken.None).AsTask()).DefaultTimeout();
@@ -58,7 +59,7 @@ public class QuicTransportFactoryTests : TestApplicationErrorLoggerLoggedTest
         var quicTransportOptions = new QuicTransportOptions();
         var quicTransportFactory = new QuicTransportFactory(NullLoggerFactory.Instance, Options.Create(quicTransportOptions));
         var features = new FeatureCollection();
-        features.Set(new SslServerAuthenticationOptions
+        features.Set(new TlsConnectionOptions
         {
             ApplicationProtocols = new List<SslApplicationProtocol>
             {

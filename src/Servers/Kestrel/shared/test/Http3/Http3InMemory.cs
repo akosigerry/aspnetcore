@@ -1020,7 +1020,7 @@ internal class TestMultiplexedConnectionContext : MultiplexedConnectionContext, 
 
 internal class TestStreamContext : ConnectionContext, IStreamDirectionFeature, IStreamIdFeature, IProtocolErrorCodeFeature, IPersistentStateFeature, IStreamAbortFeature, IDisposable, IStreamClosedFeature
 {
-    private record struct CloseAction(Action<object> Callback, object State);
+    private readonly record struct CloseAction(Action<object> Callback, object State);
 
     private readonly Http3InMemory _testBase;
 
@@ -1217,50 +1217,5 @@ internal class TestStreamContext : ConnectionContext, IStreamDirectionFeature, I
             _onClosed = new List<CloseAction>();
         }
         _onClosed.Add(new CloseAction(callback, state));
-    }
-
-    private Task CompleteAsyncMayAwait(Stack<KeyValuePair<Func<object, Task>, object>> onCompleted)
-    {
-        while (onCompleted.TryPop(out var entry))
-        {
-            try
-            {
-                var task = entry.Key.Invoke(entry.Value);
-                if (!task.IsCompletedSuccessfully)
-                {
-                    return CompleteAsyncAwaited(task, onCompleted);
-                }
-            }
-            catch (Exception ex)
-            {
-                _testBase.Logger.LogError(ex, "An error occurred running an IConnectionCompleteFeature.OnCompleted callback.");
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private async Task CompleteAsyncAwaited(Task currentTask, Stack<KeyValuePair<Func<object, Task>, object>> onCompleted)
-    {
-        try
-        {
-            await currentTask;
-        }
-        catch (Exception ex)
-        {
-            _testBase.Logger.LogError(ex, "An error occurred running an IConnectionCompleteFeature.OnCompleted callback.");
-        }
-
-        while (onCompleted.TryPop(out var entry))
-        {
-            try
-            {
-                await entry.Key.Invoke(entry.Value);
-            }
-            catch (Exception ex)
-            {
-                _testBase.Logger.LogError(ex, "An error occurred running an IConnectionCompleteFeature.OnCompleted callback.");
-            }
-        }
     }
 }

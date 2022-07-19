@@ -111,12 +111,17 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
 
     [ConditionalFact]
     [MsQuicSupported]
-    public async Task AcceptAsync_NoCertificate_Log()
+    public async Task AcceptAsync_NoCertificateOrApplicationProtocol_Log()
     {
         // Arrange
         await using var connectionListener = await QuicTestHelpers.CreateConnectionListenerFactory(
             applicationProtocols: new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
-            sslServerAuthenticationOptionsCallback: (helloInfo, cancellationToken) => ValueTask.FromResult(new SslServerAuthenticationOptions()),
+            sslServerAuthenticationOptionsCallback: (helloInfo, cancellationToken) =>
+            {
+                var options = new SslServerAuthenticationOptions();
+                options.ApplicationProtocols = new List<SslApplicationProtocol>();
+                return ValueTask.FromResult(options);
+            },
             LoggerFactory);
 
         // Act
@@ -128,6 +133,7 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
 
         // Assert
         Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerCertificateNotSpecified");
+        Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerUnknownApplicationProtocols");
     }
 
     [ConditionalFact]

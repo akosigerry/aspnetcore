@@ -93,6 +93,10 @@ internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, I
         {
             QuicLog.ConnectionListenerCertificateNotSpecified(_log);
         }
+        if (serverAuthenticationOptions.ApplicationProtocols == null || serverAuthenticationOptions.ApplicationProtocols.Count == 0)
+        {
+            QuicLog.ConnectionListenerApplicationProtocolsNotSpecified(_log);
+        }
     }
 
     public EndPoint EndPoint { get; set; }

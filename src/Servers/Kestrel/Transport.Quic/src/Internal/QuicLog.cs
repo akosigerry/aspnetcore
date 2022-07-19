@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Net.Http;
 using System.Net.Security;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.Extensions.Logging;
@@ -199,6 +200,20 @@ internal static partial class QuicLog
     [LoggerMessage(18, LogLevel.Warning, $"{nameof(SslServerAuthenticationOptions)} must provide a server certificate using {nameof(SslServerAuthenticationOptions.ServerCertificate)}," +
         $" {nameof(SslServerAuthenticationOptions.ServerCertificateContext)}, or {nameof(SslServerAuthenticationOptions.ServerCertificateSelectionCallback)}.", EventName = "ConnectionListenerCertificateNotSpecified")]
     public static partial void ConnectionListenerCertificateNotSpecified(ILogger logger);
+
+    [LoggerMessage(19, LogLevel.Warning, $"{nameof(SslServerAuthenticationOptions)} must provide at least one application protocol using {nameof(SslServerAuthenticationOptions.ApplicationProtocols)}.", EventName = "ConnectionListenerApplicationProtocolsNotSpecified")]
+    public static partial void ConnectionListenerApplicationProtocolsNotSpecified(ILogger logger);
+
+    [LoggerMessage(20, LogLevel.Warning, "Unknown application protocols specified for connection: {UnknownApplicationProtocols}", EventName = "ConnectionListenerUnknownApplicationProtocols", SkipEnabledCheck = true)]
+    private static partial void ConnectionListenerUnknownApplicationProtocolsCore(ILogger logger, string unknownApplicationProtocols);
+
+    public static void ConnectionListenerUnknownApplicationProtocols(ILogger logger, List<SslApplicationProtocol> unknownApplicationProtocols)
+    {
+        if (logger.IsEnabled(LogLevel.Warning))
+        {
+            ConnectionListenerUnknownApplicationProtocolsCore(logger, string.Join(", ", unknownApplicationProtocols));
+        }
+    }
 
     private static StreamType GetStreamType(QuicStreamContext streamContext) =>
         streamContext.CanRead && streamContext.CanWrite

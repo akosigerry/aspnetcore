@@ -200,9 +200,6 @@ internal static partial class QuicLog
         $" {nameof(SslServerAuthenticationOptions.ServerCertificateContext)}, or {nameof(SslServerAuthenticationOptions.ServerCertificateSelectionCallback)}.", EventName = "ConnectionListenerCertificateNotSpecified")]
     public static partial void ConnectionListenerCertificateNotSpecified(ILogger logger);
 
-    [LoggerMessage(19, LogLevel.Warning, $"{nameof(SslServerAuthenticationOptions)} must provide at least one application protocol using {nameof(SslServerAuthenticationOptions.ApplicationProtocols)}.", EventName = "ConnectionListenerApplicationProtocolsNotSpecified")]
-    public static partial void ConnectionListenerApplicationProtocolsNotSpecified(ILogger logger);
-
     private static StreamType GetStreamType(QuicStreamContext streamContext) =>
         streamContext.CanRead && streamContext.CanWrite
             ? StreamType.Bidirectional

@@ -56,6 +56,12 @@ internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, I
             {
                 var serverAuthenticationOptions = await sslServerAuthenticationOptionsCallback(helloInfo, cancellationToken);
 
+                // If the callback didn't set protocols then use the listener's list of protocols.
+                if (serverAuthenticationOptions.ApplicationProtocols == null)
+                {
+                    serverAuthenticationOptions.ApplicationProtocols = _protocols;
+                }
+
                 // If the SslServerAuthenticationOptions doesn't have a cert or protocols then the
                 // QUIC connection will fail and the client receives an unhelpful message.
                 // Validate the options on the server and log issues to improve debugging.
@@ -86,10 +92,6 @@ internal sealed class QuicConnectionListener : IMultiplexedConnectionListener, I
             serverAuthenticationOptions.ServerCertificateSelectionCallback == null)
         {
             QuicLog.ConnectionListenerCertificateNotSpecified(_log);
-        }
-        if (serverAuthenticationOptions.ApplicationProtocols == null || serverAuthenticationOptions.ApplicationProtocols.Count == 0)
-        {
-            QuicLog.ConnectionListenerApplicationProtocolsNotSpecified(_log);
         }
     }
 

@@ -283,14 +283,15 @@ public static class ListenOptionsHttpsExtensions
 
         var loggerFactory = listenOptions.KestrelServerOptions?.ApplicationServices.GetRequiredService<ILoggerFactory>() ?? NullLoggerFactory.Instance;
 
-        // Set the list of protocols from listen options
-        callbackOptions.HttpProtocols = listenOptions.Protocols;
-
         listenOptions.IsTls = true;
         listenOptions.HttpsCallbackOptions = callbackOptions;
 
         listenOptions.Use(next =>
         {
+            // Set the list of protocols from listen options.
+            // Set it inside Use delegate so Protocols and UseHttps can be called out of order.
+            callbackOptions.HttpProtocols = listenOptions.Protocols;
+
             var middleware = new HttpsConnectionMiddleware(next, callbackOptions, loggerFactory);
             return middleware.OnConnectionAsync;
         });

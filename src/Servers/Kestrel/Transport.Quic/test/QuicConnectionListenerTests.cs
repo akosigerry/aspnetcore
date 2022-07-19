@@ -111,7 +111,7 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
 
     [ConditionalFact]
     [MsQuicSupported]
-    public async Task AcceptAsync_NoCertificateOrApplicationProtocols_Log()
+    public async Task AcceptAsync_NoCertificate_Log()
     {
         // Arrange
         await using var connectionListener = await QuicTestHelpers.CreateConnectionListenerFactory(
@@ -128,6 +128,32 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
 
         // Assert
         Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerCertificateNotSpecified");
-        Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerApplicationProtocolsNotSpecified");
+    }
+
+    [ConditionalFact]
+    [MsQuicSupported]
+    public async Task AcceptAsync_NoApplicationProtocolsInCallback_DefaultToConnectionProtocols()
+    {
+        // Arrange
+        await using var connectionListener = await QuicTestHelpers.CreateConnectionListenerFactory(
+            applicationProtocols: new List<SslApplicationProtocol> { SslApplicationProtocol.Http3 },
+            sslServerAuthenticationOptionsCallback: (helloInfo, cancellationToken) =>
+            {
+                var options = new SslServerAuthenticationOptions();
+                options.ServerCertificate = TestResources.GetTestCertificate();
+
+                return ValueTask.FromResult(options);
+            },
+            LoggerFactory);
+
+        // Act
+        var acceptTask = connectionListener.AcceptAndAddFeatureAsync().DefaultTimeout();
+
+        var options = QuicTestHelpers.CreateClientConnectionOptions(connectionListener.EndPoint);
+
+        await using var clientConnection = await QuicConnection.ConnectAsync(options).DefaultTimeout();
+
+        // Assert
+        Assert.Equal(SslApplicationProtocol.Http3, clientConnection.NegotiatedApplicationProtocol);
     }
 }

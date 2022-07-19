@@ -133,7 +133,7 @@ public class QuicConnectionListenerTests : TestApplicationErrorLoggerLoggedTest
 
         // Assert
         Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerCertificateNotSpecified");
-        Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerUnknownApplicationProtocols");
+        Assert.Contains(LogMessages, m => m.EventId.Name == "ConnectionListenerApplicationProtocolsNotSpecified");
     }
 
     [ConditionalFact]

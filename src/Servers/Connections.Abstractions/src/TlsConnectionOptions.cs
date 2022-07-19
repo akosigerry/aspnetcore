@@ -24,6 +24,9 @@ public class TlsConnectionOptions
     /// </summary>
     public object? OnConnectionState { get; set; }
 
+    /// <summary>
+    /// Gets or sets a list of ALPN protocols.
+    /// </summary>
     public List<SslApplicationProtocol> ApplicationProtocols { get; set; } = default!;
 }
 #endif
